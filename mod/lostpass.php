@@ -1,5 +1,6 @@
 <?php
 
+require_once('include/email.php');
 
 function lostpass_post(&$a) {
 
@@ -31,6 +32,9 @@ function lostpass_post(&$a) {
 	if($r)
 		info( t('Password reset request issued. Check your email.') . EOL);
 
+	$engine = get_app()->get_template_engine();
+	get_app()->set_template_engine();
+
 	$email_tpl = get_intltext_template("lostpass_eml.tpl");
 	$email_tpl = replace_macros($email_tpl, array(
 			'$sitename' => $a->config['sitename'],
@@ -40,9 +44,11 @@ function lostpass_post(&$a) {
 			'$reset_link' => $a->get_baseurl() . '/lostpass?verify=' . $new_password
 	));
 
-	$res = mail($email, sprintf( t('Password reset requested at %s'),$a->config['sitename']),
+	get_app()->set_template_engine($engine);
+
+	$res = mail($email, email_header_encode(sprintf( t('Password reset requested at %s'),$a->config['sitename']),'UTF-8'),
 			$email_tpl,
-			'From: ' . t('Administrator') . '@' . $_SERVER['SERVER_NAME'] . "\n"
+			'From: ' . 'Administrator' . '@' . $_SERVER['SERVER_NAME'] . "\n"
 			. 'Content-type: text/plain; charset=UTF-8' . "\n"
 			. 'Content-transfer-encoding: 8bit' );
 
@@ -93,6 +99,8 @@ function lostpass_content(&$a) {
 				info("Your password has been reset." . EOL);
 
 
+			$engine = get_app()->get_template_engine();
+			get_app()->set_template_engine();
 
 			$email_tpl = get_intltext_template("passchanged_eml.tpl");
 			$email_tpl = replace_macros($email_tpl, array(
@@ -103,8 +111,12 @@ function lostpass_content(&$a) {
 			'$new_password' => $new_password,
 			'$uid' => $newuid ));
 
-			$res = mail($email,"Your password has changed at {$a->config['sitename']}",$email_tpl,
-				'From: ' . t('Administrator') . '@' . $_SERVER['SERVER_NAME'] . "\n"
+			get_app()->set_template_engine($engine);
+
+			$subject = sprintf( t('Your password has been changed at %s'), $a->config['sitename']);
+
+			$res = mail($email, email_header_encode( $subject, 'UTF-8'), $email_tpl,
+				'From: ' . 'Administrator' . '@' . $_SERVER['SERVER_NAME'] . "\n"
 				. 'Content-type: text/plain; charset=UTF-8' . "\n"
 				. 'Content-transfer-encoding: 8bit' );
 

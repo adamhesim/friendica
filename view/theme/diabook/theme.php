@@ -7,8 +7,6 @@
  * Author:
  */
 
-$a = get_app();
-
 function get_diabook_config($key, $default = false) {
 	if (local_user()) {
 		$result = get_pconfig(local_user(), "diabook", $key);
@@ -24,6 +22,8 @@ function get_diabook_config($key, $default = false) {
 }
 
 function diabook_init(&$a) {
+
+set_template_engine($a, 'smarty3');
 
 //print diabook-version for debugging
 $diabook_version = "Diabook (Version: 1.027)";
@@ -385,16 +385,16 @@ if ($color=="dark") $color_path = "/diabook-dark/";
 	$aside['$comunity_profiles_items'] = array();
 	$r = q("select gcontact.* from gcontact left join glink on glink.gcid = gcontact.id
 			  where glink.cid = 0 and glink.uid = 0 order by rand() limit 9");
-	$tpl = file_get_contents( dirname(__file__).'/ch_directory_item.tpl');
+	$tpl = get_markup_template('ch_directory_item.tpl');
 	if(count($r)) {
 		$photo = 'photo';
 		foreach($r as $rr) {
 			$profile_link = $a->get_baseurl() . '/profile/' . ((strlen($rr['nickname'])) ? $rr['nickname'] : $rr['profile_uid']);
 			$entry = replace_macros($tpl,array(
 				'$id' => $rr['id'],
-				'$profile-link' => zrl($rr['url']),
+				'$profile_link' => zrl($rr['url']),
 				'$photo' => $rr[$photo],
-				'$alt-text' => $rr['name'],
+				'$alt_text' => $rr['name'],
 			));
 			$aside['$comunity_profiles_items'][] = $entry;
 		}
@@ -414,16 +414,16 @@ if ($color=="dark") $color_path = "/diabook-dark/";
 		0,
 		9
 	);
-	$tpl = file_get_contents( dirname(__file__).'/ch_directory_item.tpl');
+	$tpl = get_markup_template('ch_directory_item.tpl');
 	if(count($r)) {
 		$photo = 'thumb';
 		foreach($r as $rr) {
 			$profile_link = $a->get_baseurl() . '/profile/' . ((strlen($rr['nickname'])) ? $rr['nickname'] : $rr['profile_uid']);
 			$entry = replace_macros($tpl,array(
 				'$id' => $rr['id'],
-				'$profile-link' => $profile_link,
+				'$profile_link' => $profile_link,
 				'$photo' => $a->get_cached_avatar_image($rr[$photo]),
-				'$alt-text' => $rr['name'],
+				'$alt_text' => $rr['name'],
 			));
 			$aside['$lastusers_items'][] = $entry;
 		}
@@ -493,16 +493,16 @@ if ($color=="dark") $color_path = "/diabook-dark/";
 				dbesc(t('Profile Photos'))
 				);
 		if(count($r)) {
-		$tpl = file_get_contents( dirname(__file__).'/ch_directory_item.tpl');
+		$tpl = get_markup_template('ch_directory_item.tpl');
 		foreach($r as $rr) {
 			$photo_page = $a->get_baseurl() . '/photos/' . $rr['nickname'] . '/image/' . $rr['resource-id'];
 			$photo_url = $a->get_baseurl() . '/photo/' .  $rr['resource-id'] . '-' . $rr['scale'] .'.jpg';
 
 			$entry = replace_macros($tpl,array(
 				'$id' => $rr['id'],
-				'$profile-link' => $photo_page,
+				'$profile_link' => $photo_page,
 				'$photo' => $photo_url,
-				'$alt-text' => $rr['username']." : ".$rr['desc'],
+				'$alt_text' => $rr['username']." : ".$rr['desc'],
 			));
 
 			$aside['$photos_items'][] = $entry;
@@ -655,13 +655,15 @@ if ($color=="dark") $color_path = "/diabook-dark/";
 		set_pconfig(local_user(), 'diabook', 'close_lastlikes', $_POST['diabook_close_lastlikes']);
 		}
 	}
-   $close = t('Settings');
-   $aside['$close'] = $close;
-   //get_baseurl
-   $url = $a->get_baseurl($ssl_state);
-   $aside['$url'] = $url;
+	$close = t('Settings');
+	$aside['$close'] = $close;
+
+	//get_baseurl
+	$url = $a->get_baseurl($ssl_state);
+	$aside['$url'] = $url;
+
 	//print right_aside
-	$tpl = file_get_contents(dirname(__file__).'/communityhome.tpl');
+	$tpl = get_markup_template('communityhome.tpl');
 	$a->page['right_aside'] = replace_macros($tpl, $aside);
 
  }
@@ -672,7 +674,7 @@ if ($color=="dark") $color_path = "/diabook-dark/";
 	$a = get_app();
 	$baseurl = $a->get_baseurl($ssl_state);
 	$bottom['$baseurl'] = $baseurl;
-	$tpl = file_get_contents(dirname(__file__) . '/bottom.tpl');
+	$tpl = get_markup_template('bottom.tpl');
 	$a->page['footer'] = $a->page['footer'].replace_macros($tpl, $bottom);
  }
 

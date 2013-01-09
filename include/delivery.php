@@ -12,13 +12,13 @@ function delivery_run(&$argv, &$argc){
 
 	if(is_null($db)) {
 		@include(".htconfig.php");
-		require_once("dba.php");
+		require_once("include/dba.php");
 		$db = new dba($db_host, $db_user, $db_pass, $db_data);
 		        unset($db_host, $db_user, $db_pass, $db_data);
 	}
 
-	require_once("session.php");
-	require_once("datetime.php");
+	require_once("include/session.php");
+	require_once("include/datetime.php");
 	require_once('include/items.php');
 	require_once('include/bbcode.php');
 	require_once('include/diaspora.php');
@@ -439,14 +439,14 @@ function delivery_run(&$argv, &$argc){
 					}
 					if(! $it)
 						break;
-					
+
 
 					$local_user = q("SELECT * FROM `user` WHERE `uid` = %d LIMIT 1",
 						intval($uid)
 					);
 					if(! count($local_user))
 						break;
-					
+
 					$reply_to = '';
 					$r1 = q("SELECT * FROM `mailacct` WHERE `uid` = %d LIMIT 1",
 						intval($uid)
@@ -458,13 +458,17 @@ function delivery_run(&$argv, &$argc){
 
 					// only expose our real email address to true friends
 
-					if(($contact['rel'] == CONTACT_IS_FRIEND) && (! $contact['blocked']))
-						$headers  = 'From: ' . email_header_encode($local_user[0]['username'],'UTF-8') . ' <' . $local_user[0]['email'] . '>' . "\n";
-					else
+					if(($contact['rel'] == CONTACT_IS_FRIEND) && (! $contact['blocked'])) {
+						if($reply_to) {
+							$headers  = 'From: '.email_header_encode($local_user[0]['username'],'UTF-8').' <'.$reply_to.'>'."\n";
+							$headers .= 'Sender: '.$local_user[0]['email']."\n";
+						} else
+							$headers  = 'From: '.email_header_encode($local_user[0]['username'],'UTF-8').' <'.$local_user[0]['email'].'>'."\n";
+					} else
 						$headers  = 'From: ' . email_header_encode($local_user[0]['username'],'UTF-8') . ' <' . t('noreply') . '@' . $a->get_hostname() . '>' . "\n";
 
-					if($reply_to)
-						$headers .= 'Reply-to: ' . $reply_to . "\n";
+					//if($reply_to)
+					//	$headers .= 'Reply-to: ' . $reply_to . "\n";
 
 					// for testing purposes: Collect exported mails
 					// $file = tempnam("/tmp/friendica/", "mail-out-");
@@ -477,13 +481,28 @@ function delivery_run(&$argv, &$argc){
 					//logger("Mail: Data: ".print_r($it, true), LOGGER_DATA);
 
 					if($it['uri'] !== $it['parent-uri']) {
-						$headers .= 'References: <' . iri2msgid($it['parent-uri']) . '>' . "\n";
-						if(!strlen($it['title'])) {
-							$r = q("SELECT `title` FROM `item` WHERE `parent-uri` = '%s' LIMIT 1",
-								dbesc($it['parent-uri']));
+						$headers .= "References: <".iri2msgid($it["parent-uri"]).">";
+
+						// If Threading is enabled, write down the correct parent
+						if (($it["thr-parent"] != "") and ($it["thr-parent"] != $it["parent-uri"]))
+							$headers .= " <".iri2msgid($it["thr-parent"]).">";
+						$headers .= "\n";
+
+						if(!$it['title']) {
+							$r = q("SELECT `title` FROM `item` WHERE `uri` = '%s' AND `uid` = %d LIMIT 1",
+								dbesc($it['parent-uri']),
+								intval($uid));
 
 							if(count($r) AND ($r[0]['title'] != ''))
 								$subject = $r[0]['title'];
+							else {
+								$r = q("SELECT `title` FROM `item` WHERE `parent-uri` = '%s' AND `uid` = %d LIMIT 1",
+									dbesc($it['parent-uri']),
+									intval($uid));
+
+								if(count($r) AND ($r[0]['title'] != ''))
+									$subject = $r[0]['title'];
+							}
 						}
 						if(strncasecmp($subject,'RE:',3))
 							$subject = 'Re: '.$subject;

@@ -1,5 +1,7 @@
 <?php
 
+require_once('include/email.php');
+
 function user_allow($hash) {
 
 	$a = get_app();
@@ -39,6 +41,9 @@ function user_allow($hash) {
 
 	push_lang($register[0]['language']);
 
+	$engine = get_app()->get_template_engine();
+	get_app()->set_template_engine();
+
 	$email_tpl = get_intltext_template("register_open_eml.tpl");
 	$email_tpl = replace_macros($email_tpl, array(
 			'$sitename' => $a->config['sitename'],
@@ -49,9 +54,13 @@ function user_allow($hash) {
 			'$uid' => $user[0]['uid']
 	));
 
-	$res = mail($user[0]['email'], sprintf(t('Registration details for %s'), $a->config['sitename']),
+
+	get_app()->set_template_engine($engine);
+
+
+	$res = mail($user[0]['email'], email_header_encode( sprintf(t('Registration details for %s'), $a->config['sitename']), 'UTF-8'),
 		$email_tpl,
-			'From: ' . t('Administrator') . '@' . $_SERVER['SERVER_NAME'] . "\n"
+			'From: ' . 'Administrator' . '@' . $_SERVER['SERVER_NAME'] . "\n"
 			. 'Content-type: text/plain; charset=UTF-8' . "\n"
 			. 'Content-transfer-encoding: 8bit' );
 

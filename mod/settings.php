@@ -209,6 +209,7 @@ function settings_post(&$a) {
 					intval($mail_pubmail),
 					intval(local_user())
 				);
+				logger("mail: updating mailaccount. Response: ".print_r($r, true));
 				$r = q("SELECT * FROM `mailacct` WHERE `uid` = %d LIMIT 1",
 					intval(local_user())
 				);
@@ -667,7 +668,6 @@ function settings_content(&$a) {
 			'$title'	=> t('Additional Features'),
 			'$features' => $arr,
 			'$submit'   => t('Submit'),
-			'$field_yesno'	=> 'field_yesno.tpl',
 		));
 		return $o;
 	}
@@ -714,6 +714,7 @@ function settings_content(&$a) {
 			$mail_disabled_message = (($mail_disabled) ? t('Email access is disabled on this site.') : '');
 		}
 	
+
 		$o .= replace_macros($tpl, array(
 			'$form_security_token' => get_form_security_token("settings_connectors"),
 			
@@ -731,7 +732,7 @@ function settings_content(&$a) {
 			'$mail_ssl'		=> array('mail_ssl', 	 t('Security:'), strtoupper($mail_ssl), '', array( 'notls'=>t('None'), 'TLS'=>'TLS', 'SSL'=>'SSL')),
 			'$mail_user'	=> array('mail_user',    t('Email login name:'), $mail_user, ''),
 			'$mail_pass'	=> array('mail_pass', 	 t('Email password:'), '', ''),
-			'$mail_replyto'	=> array('mail_replyto', t('Reply-to address:'), '', 'Optional'),
+			'$mail_replyto'	=> array('mail_replyto', t('Reply-to address:'), $mail_replyto, 'Optional'),
 			'$mail_pubmail'	=> array('mail_pubmail', t('Send public posts to all email contacts:'), $mail_pubmail, ''),
 			'$mail_action'	=> array('mail_action',	 t('Action after import:'), $mail_action, '', array(0=>t('None'), /*1=>t('Delete'),*/ 2=>t('Mark as seen'), 3=>t('Move to folder'))),
 			'$mail_movetofolder'	=> array('mail_movetofolder',	 t('Move to folder:'), $mail_movetofolder, ''),
@@ -890,7 +891,7 @@ function settings_content(&$a) {
 
 
 	$pageset_tpl = get_markup_template('pagetypes.tpl');
-	$pagetype = replace_macros($pageset_tpl,array(
+	$pagetype = replace_macros($pageset_tpl, array(
 		'$page_normal' 	=> array('page-flags', t('Normal Account Page'), PAGE_NORMAL, 
 									t('This account is a normal personal profile'), 
 									($a->user['page-flags'] == PAGE_NORMAL)),
@@ -1011,7 +1012,7 @@ function settings_content(&$a) {
 	require_once('include/group.php');
 	$group_select = mini_group_select(local_user(),$a->user['def_gid']);
 
-	$o .= replace_macros($stpl,array(
+	$o .= replace_macros($stpl, array(
 		'$ptitle' 	=> t('Account Settings'),
 
 		'$submit' 	=> t('Submit'),

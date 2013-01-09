@@ -5,7 +5,7 @@ require_once('include/oembed.php');
 require_once('include/salmon.php');
 require_once('include/crypto.php');
 require_once('include/Photo.php');
-
+require_once('include/email.php');
 
 function get_feed_for(&$a, $dfrn_id, $owner_nick, $last_update, $direction = 0) {
 
@@ -798,6 +798,7 @@ function get_atom_elements($feed,$item) {
 		logger('get_atom_elements: Looking for status.net repeated message');
 
 		$message = $child["http://activitystrea.ms/spec/1.0/"]["object"][0]["child"][SIMPLEPIE_NAMESPACE_ATOM_10]["content"][0]["data"];
+		$orig_uri = $child["http://activitystrea.ms/spec/1.0/"]["object"][0]["child"][SIMPLEPIE_NAMESPACE_ATOM_10]["id"][0]["data"];
 		$author = $child[SIMPLEPIE_NAMESPACE_ATOM_10]["author"][0]["child"][SIMPLEPIE_NAMESPACE_ATOM_10];
 		$uri = $author["uri"][0]["data"];
 		$name = $author["name"][0]["data"];
@@ -805,17 +806,26 @@ function get_atom_elements($feed,$item) {
 		$avatar = $avatar["href"];
 
 		if (($name != "") and ($uri != "") and ($avatar != "") and ($message != "")) {
-			logger('get_atom_elements: fixing sender of repeated message');
+			logger('get_atom_elements: fixing sender of repeated message.');
 
-			$res["owner-name"] = $res["author-name"];
-			$res["owner-link"] = $res["author-link"];
-			$res["owner-avatar"] = $res["author-avatar"];
+			if (intval(get_config('system','new_share'))) {
+				$prefix = "[share author='".str_replace("'", "&#039;",$name).
+						"' profile='".$uri.
+						"' avatar='".$avatar.
+						"' link='".$orig_uri."']";
 
-			$res["author-name"] = $name;
-			$res["author-link"] = $uri;
-			$res["author-avatar"] = $avatar;
+				$res["body"] = $prefix.html2bbcode($message)."[/share]";
+			} else {
+				$res["owner-name"] = $res["author-name"];
+				$res["owner-link"] = $res["author-link"];
+				$res["owner-avatar"] = $res["author-avatar"];
 
-			$res["body"] = html2bbcode($message);
+				$res["author-name"] = $name;
+				$res["author-link"] = $uri;
+				$res["author-avatar"] = $avatar;
+
+				$res["body"] = html2bbcode($message);
+			}
 		}
 	}
 
@@ -1597,7 +1607,7 @@ function consume_feed($xml,$importer,&$contact, &$hub, $datedir = 0, $pass = 0) 
 
 	if((is_array($contact)) && ($photo_timestamp) && (strlen($photo_url)) && ($photo_timestamp > $contact['avatar-date'])) {
 		logger('consume_feed: Updating photo for ' . $contact['name']);
-		require_once("Photo.php");
+		require_once("include/Photo.php");
 		$photo_failure = false;
 		$have_photo = false;
 
@@ -2230,7 +2240,7 @@ function local_delivery($importer,$data) {
 
 	if(($photo_timestamp) && (strlen($photo_url)) && ($photo_timestamp > $importer['avatar-date'])) {
 		logger('local_delivery: Updating photo for ' . $importer['name']);
-		require_once("Photo.php");
+		require_once("include/Photo.php");
 		$photo_failure = false;
 		$have_photo = false;
 
@@ -3351,6 +3361,10 @@ function new_follower($importer,$contact,$datarray,$item,$sharing = false) {
 			}
 
 			if(($r[0]['notify-flags'] & NOTIFY_INTRO) && ($r[0]['page-flags'] == PAGE_NORMAL)) {
+
+				$engine = get_app()->get_template_engine();
+				get_app()->set_template_engine();
+
 				$email_tpl = get_intltext_template('follow_notify_eml.tpl');
 				$email = replace_macros($email_tpl, array(
 					'$requestor' => ((strlen($name)) ? $name : t('[Name Withheld]')),
@@ -3359,10 +3373,13 @@ function new_follower($importer,$contact,$datarray,$item,$sharing = false) {
 					'$siteurl' => $a->get_baseurl(),
 					'$sitename' => $a->config['sitename']
 				));
+
+				get_app()->set_template_engine($engine);
+
 				$res = mail($r[0]['email'], 
-					(($sharing) ? t('A new person is sharing with you at ') : t("You have a new follower at ")) . $a->config['sitename'],
+					email_header_encode((($sharing) ? t('A new person is sharing with you at ') : t("You have a new follower at ")) . $a->config['sitename'],'UTF-8'),
 					$email,
-					'From: ' . t('Administrator') . '@' . $_SERVER['SERVER_NAME'] . "\n"
+					'From: ' . 'Administrator' . '@' . $_SERVER['SERVER_NAME'] . "\n"
 					. 'Content-type: text/plain; charset=UTF-8' . "\n"
 					. 'Content-transfer-encoding: 8bit' );
 			

@@ -1,5 +1,7 @@
 <?php
 
+require_once('include/email.php');
+
 if(! function_exists('register_post')) {
 function register_post(&$a) {
 
@@ -77,6 +79,10 @@ function register_post(&$a) {
 			set_pconfig($user['uid'],'system','invites_remaining',$num_invites);
 		}
 
+		$engine = get_app()->get_template_engine();
+		get_app()->set_template_engine();
+
+
 		$email_tpl = get_intltext_template("register_open_eml.tpl");
 		$email_tpl = replace_macros($email_tpl, array(
 				'$sitename' => $a->config['sitename'],
@@ -86,9 +92,13 @@ function register_post(&$a) {
 				'$password' => $result['password'],
 				'$uid' => $user['uid'] ));
 
-		$res = mail($user['email'], sprintf(t('Registration details for %s'), $a->config['sitename']),
+
+		get_app()->set_template_engine($engine);
+
+
+		$res = mail($user['email'], email_header_encode( sprintf( t('Registration details for %s'), $a->config['sitename']),'UTF-8'),
 			$email_tpl, 
-				'From: ' . t('Administrator') . '@' . $_SERVER['SERVER_NAME'] . "\n"
+				'From: ' . 'Administrator' . '@' . $_SERVER['SERVER_NAME'] . "\n"
 				. 'Content-type: text/plain; charset=UTF-8' . "\n"
 				. 'Content-transfer-encoding: 8bit' );
 
@@ -129,6 +139,10 @@ function register_post(&$a) {
 			set_pconfig($user['uid'],'system','invites_remaining',$num_invites);
 		}
 
+
+		$engine = get_app()->get_template_engine();
+		get_app()->set_template_engine();
+
 		$email_tpl = get_intltext_template("register_verify_eml.tpl");
 		$email_tpl = replace_macros($email_tpl, array(
 				'$sitename' => $a->config['sitename'],
@@ -140,9 +154,12 @@ function register_post(&$a) {
 				'$hash' => $hash
 		 ));
 
-		$res = mail($a->config['admin_email'], sprintf(t('Registration request at %s'), $a->config['sitename']),
+		get_app()->set_template_engine($engine);
+
+
+		$res = mail($a->config['admin_email'], email_header_encode( sprintf(t('Registration request at %s'), $a->config['sitename']),'UTF-8'),
 			$email_tpl,
-				'From: ' . t('Administrator') . '@' . $_SERVER['SERVER_NAME'] . "\n"
+				'From: ' . 'Administrator' . '@' . $_SERVER['SERVER_NAME'] . "\n"
 				. 'Content-type: text/plain; charset=UTF-8' . "\n"
 				. 'Content-transfer-encoding: 8bit' );
 
@@ -239,7 +256,6 @@ function register_content(&$a) {
 		));
 	}
 
-
 	$license = '';
 
 	$o = get_markup_template("register.tpl");
@@ -267,7 +283,7 @@ function register_content(&$a) {
 		'$openid'    => $openid_url,
 		'$namelabel' => t('Your Full Name ' . "\x28" . 'e.g. Joe Smith' . "\x29" . ': '),
 		'$addrlabel' => t('Your Email Address: '),
-		'$nickdesc'  => t('Choose a profile nickname. This must begin with a text character. Your profile address on this site will then be \'<strong>nickname@$sitename</strong>\'.'),
+		'$nickdesc'  => str_replace('$sitename',$a->get_hostname(),t('Choose a profile nickname. This must begin with a text character. Your profile address on this site will then be \'<strong>nickname@$sitename</strong>\'.')),
 		'$nicklabel' => t('Choose a nickname: '),
 		'$photo'     => $photo,
 		'$publish'   => $profile_publish,

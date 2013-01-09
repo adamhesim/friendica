@@ -310,7 +310,7 @@ function notification($params) {
 
 	// send email notification if notification preferences permit
 
-	require_once('bbcode.php');
+	require_once('include/bbcode.php');
 	if((intval($params['notify_flags']) & intval($params['type'])) || $params['type'] == NOTIFY_SYSTEM) {
 
 		logger('notification: sending notification email');
@@ -471,8 +471,8 @@ class enotify {
 		// generate a multipart/alternative message header
 		$messageHeader =
 			$params['additionalMailHeader'] .
-			"From: {$params['fromName']} <{$params['fromEmail']}>\n" . 
-			"Reply-To: {$params['fromName']} <{$params['replyTo']}>\n" .
+			"From: $fromName <{$params['fromEmail']}>\n" . 
+			"Reply-To: $fromName <{$params['replyTo']}>\n" .
 			"MIME-Version: 1.0\n" .
 			"Content-Type: multipart/alternative; boundary=\"{$mimeBoundary}\"";
 
@@ -493,7 +493,7 @@ class enotify {
 		// send the message
 		$res = mail(
 			$params['toEmail'],	 									// send to address
-			$params['messageSubject'],								// subject
+			$messageSubject,								// subject
 			$multipartMessageBody,	 						// message body
 			$messageHeader									// message headers
 		);

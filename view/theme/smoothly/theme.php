@@ -2,17 +2,17 @@
 
 /*
  * Name: Smoothly
- * Description: Like coffee with milk. Theme works fine with iPad[2].
- * Version: Version 0.11.14-2
+ * Description: Like coffee with milk. Theme optimized for iPad[2].
+ * Version: Version 0.131
  * Author: Alex <https://friendica.pixelbits.de/profile/alex>
  * Maintainer: Alex <https://friendica.pixelbits.de/profile/alex>
  * Screenshot: <a href="screenshot.png">Screenshot</a>
  */
 
-$a = get_app();
-$a->theme_info = array();
-
 function smoothly_init(&$a) {
+	$a->theme_info = array();
+	set_template_engine($a, 'smarty3');
+
 	$cssFile = null;
 	$ssl_state = null;
 	$baseurl = $a->get_baseurl($ssl_state);
@@ -116,7 +116,7 @@ if(! function_exists('_js_in_foot')) {
 		$ssl_state = null;
 		$baseurl = $a->get_baseurl($ssl_state);
 		$bottom['$baseurl'] = $baseurl;
-		$tpl = file_get_contents(dirname(__file__) . '/bottom.tpl');
+		$tpl = get_markup_template('bottom.tpl');
 
 		return $a->page['bottom'] = replace_macros($tpl, $bottom);
 	}

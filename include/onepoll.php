@@ -2,6 +2,13 @@
 
 require_once("boot.php");
 
+function RemoveReply($subject) {
+	while (in_array(strtolower(substr($subject, 0, 3)), array("re:", "aw:")))
+		$subject = trim(substr($subject, 4));
+
+	return($subject);
+}
+
 function onepoll_run(&$argv, &$argc){
 	global $a, $db;
 
@@ -11,7 +18,7 @@ function onepoll_run(&$argv, &$argc){
   
 	if(is_null($db)) {
 	    @include(".htconfig.php");
-    	require_once("dba.php");
+    	require_once("include/dba.php");
 	    $db = new dba($db_host, $db_user, $db_pass, $db_data);
     	unset($db_host, $db_user, $db_pass, $db_data);
   	};
@@ -245,6 +252,9 @@ function onepoll_run(&$argv, &$argc){
 
 		$stat_writeable = ((($contact['notify']) && ($contact['rel'] == CONTACT_IS_FOLLOWER || $contact['rel'] == CONTACT_IS_FRIEND)) ? 1 : 0);
 
+		if($contact['network'] === NETWORK_OSTATUS && get_pconfig($importer_uid,'system','ostatus_autofriend'))
+			$stat_writeable = 1;
+
 		if($stat_writeable != $contact['writable']) {
 			q("UPDATE `contact` SET `writable` = %d WHERE `id` = %d LIMIT 1",
 				intval($stat_writeable),
@@ -328,7 +338,7 @@ function onepoll_run(&$argv, &$argc){
 									intval($r[0]['id'])
 								);
 							}
-							/*switch ($mailconf[0]['action']) {
+							switch ($mailconf[0]['action']) {
 								case 0:
 									logger("Mail: Seen before ".$msg_uid." for ".$mailconf[0]['user'].". Doing nothing.", LOGGER_DEBUG);
 									break;
@@ -346,7 +356,7 @@ function onepoll_run(&$argv, &$argc){
 									if ($mailconf[0]['movetofolder'] != "")
 										imap_mail_move($mbox, $msg_uid, $mailconf[0]['movetofolder'], FT_UID);
 									break;
-							}*/
+							}
 							continue;
 						}
 
@@ -374,10 +384,6 @@ function onepoll_run(&$argv, &$argc){
 	//							$datarray['parent-uri'] = $r[0]['uri'];
 						}
 
-
-						if(! x($datarray,'parent-uri'))
-							$datarray['parent-uri'] = $datarray['uri'];
-
 						// Decoding the header
 						$subject = imap_mime_header_decode($meta->subject);
 						$datarray['title'] = "";
@@ -392,10 +398,27 @@ function onepoll_run(&$argv, &$argc){
 						//$datarray['title'] = notags(trim($meta->subject));
 						$datarray['created'] = datetime_convert('UTC','UTC',$meta->date);
 
-						// Is it  reply?
+						// Is it a reply?
 						$reply = ((substr(strtolower($datarray['title']), 0, 3) == "re:") or
 							(substr(strtolower($datarray['title']), 0, 3) == "re-") or
-							(raw_refs != ""));
+							($raw_refs != ""));
+
+						// Remove Reply-signs in the subject
+						$datarray['title'] = RemoveReply($datarray['title']);
+
+						// If it seems to be a reply but a header couldn't be found take the last message with matching subject
+						if(!x($datarray,'parent-uri') and $reply) {
+							//$r = q("SELECT `uri` , `parent-uri` FROM `item` WHERE MATCH (`title`) AGAINST ('".'"%s"'."' IN BOOLEAN MODE) AND `uid` = %d ORDER BY `created` DESC LIMIT 1",
+							$r = q("SELECT `uri` , `parent-uri` FROM `item` WHERE `title` = \"%s\" AND `uid` = %d ORDER BY `created` DESC LIMIT 1",
+								dbesc(protect_sprintf($datarray['title'])),
+								intval($importer_uid));
+							if(count($r))
+								$datarray['parent-uri'] = $r[0]['parent-uri'];
+						}
+
+						if(! x($datarray,'parent-uri'))
+							$datarray['parent-uri'] = $datarray['uri'];
+
 
 						$r = email_get_msg($mbox,$msg_uid, $reply);
 						if(! $r) {
@@ -418,7 +441,29 @@ function onepoll_run(&$argv, &$argc){
 								else
 									$fromdecoded .= $frompart->text;
 
-							$datarray['body'] = "[b]".t('From: ') . escape_tags($fromdecoded) . "[/b]\n\n" . $datarray['body'];
+							$fromarr = imap_rfc822_parse_adrlist($fromdecoded, $a->get_hostname());
+
+							$frommail = $fromarr[0]->mailbox."@".$fromarr[0]->host;
+
+							if (isset($fromarr[0]->personal))
+								$fromname = $fromarr[0]->personal;
+							else
+								$fromname = $frommail;
+
+							//$datarray['body'] = "[b]".t('From: ') . escape_tags($fromdecoded) . "[/b]\n\n" . $datarray['body'];
+
+							$datarray['author-name'] = $fromname;
+							$datarray['author-link'] = "mailto:".$frommail;
+							$datarray['author-avatar'] = $contact['photo'];
+
+							$datarray['owner-name'] = $contact['name'];
+							$datarray['owner-link'] = "mailto:".$contact['addr'];
+							$datarray['owner-avatar'] = $contact['photo'];
+
+						} else {
+							$datarray['author-name'] = $contact['name'];
+							$datarray['author-link'] = 'mailbox';
+							$datarray['author-avatar'] = $contact['photo'];
 						}
 
 						$datarray['uid'] = $importer_uid;
@@ -429,9 +474,6 @@ function onepoll_run(&$argv, &$argc){
 							$datarray['private'] = 1;
 							$datarray['allow_cid'] = '<' . $contact['id'] . '>';
 						}
-						$datarray['author-name'] = $contact['name'];
-						$datarray['author-link'] = 'mailbox';
-						$datarray['author-avatar'] = $contact['photo'];
 
 						$stored_item = item_store($datarray);
 						q("UPDATE `item` SET `last-child` = 0 WHERE `parent-uri` = '%s' AND `uid` = %d",

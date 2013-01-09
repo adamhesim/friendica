@@ -41,7 +41,7 @@ load_translation_table($lang);
  *
  */
 
-require_once("dba.php");
+require_once("include/dba.php");
 
 if(! $install) {
 	$db = new dba($db_host, $db_user, $db_pass, $db_data, $install);
@@ -54,7 +54,7 @@ if(! $install) {
 	load_config('config');
 	load_config('system');
 
-	require_once("session.php");
+	require_once("include/session.php");
 	load_hooks();
 	call_hooks('init_1');
 }
@@ -109,7 +109,7 @@ if((x($_GET,'zrl')) && (! $install)) {
 // header('Link: <' . $a->get_baseurl() . '/amcd>; rel="acct-mgmt";');
 
 if((x($_SESSION,'authenticated')) || (x($_POST,'auth-params')) || ($a->module === 'login'))
-	require("auth.php");
+	require("include/auth.php");
 
 if(! x($_SESSION,'authenticated'))
 	header('X-Account-Management-Status: none');
@@ -377,14 +377,8 @@ if($a->module != 'install') {
 }
 
 /**
- * Build the page - now that we have all the components
+ * Add a "toggle mobile" link if we're using a mobile device
  */
-
-if(!$a->theme['stylesheet'])
-	$stylesheet = current_theme_url();
-else
-	$stylesheet = $a->theme['stylesheet'];
-$a->page['htmlhead'] = replace_macros($a->page['htmlhead'], array('$stylesheet' => $stylesheet));
 
 if($a->is_mobile || $a->is_tablet) {
 	if(isset($_SESSION['show-mobile']) && !$_SESSION['show-mobile']) {
@@ -398,6 +392,16 @@ if($a->is_mobile || $a->is_tablet) {
 	                     	'$toggle_text' => t('toggle mobile')
     	                 ));
 }
+
+/**
+ * Build the page - now that we have all the components
+ */
+
+if(!$a->theme['stylesheet'])
+	$stylesheet = current_theme_url();
+else
+	$stylesheet = $a->theme['stylesheet'];
+$a->page['htmlhead'] = replace_macros($a->page['htmlhead'], array('$stylesheet' => $stylesheet));
 
 $page    = $a->page;
 $profile = $a->profile;

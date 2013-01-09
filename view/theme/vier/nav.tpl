@@ -35,12 +35,13 @@
                         </li>           
                 {{ endif }}
 
-		<li id="nav-site-linkmenu" class="nav-menu-icon"><a href="#" rel="#nav-site-menu"><span class="icon s22 gear">Site</span></a>
+		<li id="nav-site-linkmenu" class="nav-menu-icon"><a href="#" rel="#nav-site-menu"><span class="icon s22 gear" style="color: lightgray;"></span></a>
 			<ul id="nav-site-menu" class="menu-popup">
 				{{ if $nav.manage }}<li><a class="$nav.manage.2" href="$nav.manage.0" title="$nav.manage.3">$nav.manage.1</a></li>{{ endif }}				
 				{{ if $nav.help }} <li><a class="$nav.help.2" target="friendica-help" href="$nav.help.0" title="$nav.help.3" >$nav.help.1</a></li>{{ endif }}
 				<li><a class="$nav.search.2" href="friendica" title="Site Info / Impressum" >Info/Impressum</a></li>
 				<li><a class="$nav.directory.2" href="$nav.directory.0" title="$nav.directory.3" >$nav.directory.1</a></li>
+				{{ if $nav.delegations }}<li><a class="$nav.delegations.2" href="$nav.delegations.0" title="$nav.delegations.3">$nav.delegations.1</a></li>{{ endif }}
 				{{ if $nav.settings }}<li><a class="$nav.settings.2" href="$nav.settings.0" title="$nav.settings.3">$nav.settings.1</a></li>{{ endif }}
 				{{ if $nav.admin }}<li><a class="$nav.admin.2" href="$nav.admin.0" title="$nav.admin.3" >$nav.admin.1</a></li>{{ endif }}
 
@@ -49,7 +50,7 @@
 			</ul>		
 		</li>
 		{{ if $nav.notifications }}
-			<li  id="nav-notifications-linkmenu" class="nav-menu-icon"><a href="$nav.notifications.0" rel="#nav-notifications-menu" title="$nav.notifications.1"><span class="icon s22 notify">$nav.notifications.1</span></a>
+			<li  id="nav-notifications-linkmenu" class="nav-menu-icon"><a href="$nav.notifications.0" rel="#nav-notifications-menu" title="$nav.notifications.1"><span class="icon s22 notify"></span></a>
 				<span id="notify-update" class="nav-notify"></span>
 				<ul id="nav-notifications-menu" class="menu-popup">
 					<li id="nav-notifications-mark-all"><a href="#" onclick="notifyMarkAll(); return false;">$nav.notifications.mark.1</a></li>
@@ -74,7 +75,6 @@
 					{{ for $nav.usermenu as $usermenu }}
 						<li><a class="$usermenu.2" href="$usermenu.0" title="$usermenu.3">$usermenu.1</a></li>
 					{{ endfor }}
-					
 					{{ if $nav.notifications }}<li><a class="$nav.notifications.2" href="$nav.notifications.0" title="$nav.notifications.3" >$nav.notifications.1</a></li>{{ endif }}
 					{{ if $nav.messages }}<li><a class="$nav.messages.2" href="$nav.messages.0" title="$nav.messages.3" >$nav.messages.1</a></li>{{ endif }}
 					{{ if $nav.contacts }}<li><a class="$nav.contacts.2" href="$nav.contacts.0" title="$nav.contacts.3" >$nav.contacts.1</a></li>{{ endif }}	
@@ -104,7 +104,7 @@
 
 </nav>
 <ul id="nav-notifications-template" style="display:none;" rel="template">
-	<li><a href="{0}"><img src="{1}">{2} <span class="notif-when">{3}</span></a></li>
+	<li><a href="{0}"><img data-src="{1}">{2} <span class="notif-when">{3}</span></a></li>
 </ul>
 
 {#

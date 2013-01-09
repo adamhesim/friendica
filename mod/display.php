@@ -1,12 +1,21 @@
 <?php
 
 
-function display_content(&$a, $update = 0) {
+function display_init(&$a) {
 
 	if((get_config('system','block_public')) && (! local_user()) && (! remote_user())) {
 		notice( t('Public access denied.') . EOL);
+		killme();
 		return;
 	}
+
+	$nick = (($a->argc > 1) ? $a->argv[1] : '');
+	profile_load($a,$nick);
+
+}
+
+
+function display_content(&$a, $update = 0) {
 
 	require_once("include/bbcode.php");
 	require_once('include/security.php');
@@ -16,7 +25,7 @@ function display_content(&$a, $update = 0) {
 
 	$o = '';
 
-	$a->page['htmlhead'] .= get_markup_template('display-head.tpl');
+	$a->page['htmlhead'] .= replace_macros(get_markup_template('display-head.tpl'), array());
 
 
 	if($update) {
@@ -25,7 +34,6 @@ function display_content(&$a, $update = 0) {
 	else {
 		$nick = (($a->argc > 1) ? $a->argv[1] : '');
 	}
-	profile_load($a,$nick);
 
 	if($update) {
 		$item_id = $_REQUEST['item_id'];

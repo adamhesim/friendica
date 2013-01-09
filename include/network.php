@@ -15,6 +15,9 @@ function fetch_url($url,$binary = false, &$redirects = 0, $timeout = 0, $accept_
 
 	@curl_setopt($ch, CURLOPT_HEADER, true);
 
+	@curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+	@curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+
 	if (!is_null($accept_content)){
 		curl_setopt($ch,CURLOPT_HTTPHEADER, array (
 			"Accept: " . $accept_content
@@ -854,8 +857,7 @@ function scale_external_images($s, $include_link = true, $scale_replace = false)
 	}
 
 	// replace the special char encoding
-
-	$s = htmlspecialchars($s,ENT_QUOTES,'UTF-8');
+	$s = htmlspecialchars($s,ENT_NOQUOTES,'UTF-8');
 	return $s;
 }
 

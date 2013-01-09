@@ -7,9 +7,10 @@
  * Maintainer: Tobias <https://diekershoff.homeunix.net/friendica/profile/tobias>
  */
  
-$a->theme_info = array();
-
 function quattro_init(&$a) {
+$a->theme_info = array();
+set_template_engine($a, 'smarty3');
+
 $a->page['htmlhead'] .= <<< EOT
 <script>
 function insertFormatting(comment,BBcode,id) {
