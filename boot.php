@@ -12,9 +12,9 @@ require_once('library/Mobile_Detect/Mobile_Detect.php');
 require_once('include/features.php');
 
 define ( 'FRIENDICA_PLATFORM',     'Friendica');
-define ( 'FRIENDICA_VERSION',      '3.1.1582' );
+define ( 'FRIENDICA_VERSION',      '3.1.1610' );
 define ( 'DFRN_PROTOCOL_VERSION',  '2.23'    );
-define ( 'DB_UPDATE_VERSION',      1157      );
+define ( 'DB_UPDATE_VERSION',      1159      );
 
 define ( 'EOL',                    "<br />\r\n"     );
 define ( 'ATOM_TIME',              'Y-m-d\TH:i:s\Z' );
@@ -384,8 +384,14 @@ if(! class_exists('App')) {
 			'template_engine' => 'internal',
 		);
 
-		public $smarty3_ldelim = '{{';
-		public $smarty3_rdelim = '}}';
+		private $ldelim = array(
+			'internal' => '',
+			'smarty3' => '{{'
+		);
+		private $rdelim = array(
+			'internal' => '',
+			'smarty3' => '}}'
+		);
 
 		private $scheme;
 		private $hostname;
@@ -616,17 +622,17 @@ if(! class_exists('App')) {
 			 */
 			if(!isset($this->page['htmlhead']))
 				$this->page['htmlhead'] = '';
-			$tpl = get_markup_template('head.tpl');
 
 			// If we're using Smarty, then doing replace_macros() will replace
 			// any unrecognized variables with a blank string. Since we delay
 			// replacing $stylesheet until later, we need to replace it now
 			// with another variable name
 			if($this->theme['template_engine'] === 'smarty3')
-				$stylesheet = $this->smarty3_ldelim . '$stylesheet' . $this->smarty3_rdelim;
+				$stylesheet = $this->get_template_ldelim('smarty3') . '$stylesheet' . $this->get_template_rdelim('smarty3');
 			else
 				$stylesheet = '$stylesheet';
 
+			$tpl = get_markup_template('head.tpl');
 			$this->page['htmlhead'] = replace_macros($tpl,array(
 				'$baseurl' => $this->get_baseurl(), // FIXME for z_path!!!!
 				'$local_user' => local_user(),
@@ -665,14 +671,6 @@ if(! class_exists('App')) {
 			return $this->curl_headers;
 		}
 
-		function get_template_engine() {
-			return get_template_engine($this);
-		}
-
-		function set_template_engine($engine = 'internal') {
-			return set_template_engine($this,$engine);
-		}
-
 		function get_cached_avatar_image($avatar_image){
 			if($this->cached_profile_image[$avatar_image])
 				return $this->cached_profile_image[$avatar_image];
@@ -695,6 +693,31 @@ if(! class_exists('App')) {
 			return $this->cached_profile_image[$avatar_image];
 		}
 
+		function get_template_engine() {
+			return $this->theme['template_engine'];
+		}
+
+		function set_template_engine($engine = 'internal') {
+
+			$this->theme['template_engine'] = 'internal';
+
+			switch($engine) {
+				case 'smarty3':
+					if(is_writable('view/smarty3/'))
+						$this->theme['template_engine'] = 'smarty3';
+					break;
+				default:
+					break;
+			}
+		}
+
+		function get_template_ldelim($engine = 'internal') {
+			return $this->ldelim[$engine];
+		}
+
+		function get_template_rdelim($engine = 'internal') {
+			return $this->rdelim[$engine];
+		}
 
 	}
 }
@@ -780,18 +803,26 @@ function is_ajax() {
 	return (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
 }
 
+function check_db() {
 
-// Primarily involved with database upgrade, but also sets the
-// base url for use in cmdline programs which don't have
-// $_SERVER variables, and synchronising the state of installed plugins.
+	$build = get_config('system','build');
+	if(! x($build)) {
+		set_config('system','build',DB_UPDATE_VERSION);
+		$build = DB_UPDATE_VERSION;
+	}
+	if($build != DB_UPDATE_VERSION)
+		proc_run('php', 'include/dbupdate.php');
+
+}
 
 
-if(! function_exists('check_config')) {
-	function check_config(&$a) {
 
-		$build = get_config('system','build');
-		if(! x($build))
-			$build = set_config('system','build',DB_UPDATE_VERSION);
+
+// Sets the base url for use in cmdline programs which don't have
+// $_SERVER variables
+
+if(! function_exists('check_url')) {
+	function check_url(&$a) {
 
 		$url = get_config('system','url');
 
@@ -806,6 +837,19 @@ if(! function_exists('check_config')) {
 		if((! link_compare($url,$a->get_baseurl())) && (! preg_match("/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/",$a->get_hostname)))
 			$url = set_config('system','url',$a->get_baseurl());
 
+		return;
+	}
+}
+
+
+// Automatic database updates
+
+if(! function_exists('update_db')) {
+	function update_db(&$a) {
+
+		$build = get_config('system','build');
+		if(! x($build))
+			$build = set_config('system','build',DB_UPDATE_VERSION);
 
 		if($build != DB_UPDATE_VERSION) {
 			$stored = intval($build);
@@ -847,10 +891,6 @@ if(! function_exists('check_config')) {
 							$retval = $func();
 							if($retval) {
 								//send the administrator an e-mail
-
-							$engine = get_app()->get_template_engine();
-							get_app()->set_template_engine();
-
 								$email_tpl = get_intltext_template("update_fail_eml.tpl");
 								$email_msg = replace_macros($email_tpl, array(
 									'$sitename' => $a->config['sitename'],
@@ -858,9 +898,6 @@ if(! function_exists('check_config')) {
 									'$update' => $x,
 									'$error' => sprintf( t('Update %s failed. See error logs.'), $x)
 								));
-
-								get_app()->set_template_engine($engine);
-
 								$subject=sprintf(t('Update Error at %s'), $a->get_baseurl());
 								require_once('include/email.php');
 								$subject = email_header_encode($subject,'UTF-8');	
@@ -881,6 +918,14 @@ if(! function_exists('check_config')) {
 				}
 			}
 		}
+
+		return;
+	}
+}
+
+
+if(! function_exists('check_plugins')) {
+	function check_plugins(&$a) {
 
 		/**
 		 *
@@ -1205,7 +1250,7 @@ if(! function_exists('profile_load')) {
 		 * load/reload current theme info
 		 */
 
-		set_template_engine($a); // reset the template engine to the default in case the user's theme doesn't specify one
+		$a->set_template_engine(); // reset the template engine to the default in case the user's theme doesn't specify one
 
 		$theme_info_file = "view/theme/".current_theme()."/theme.php";
 		if (file_exists($theme_info_file)){
@@ -1282,7 +1327,7 @@ if(! function_exists('profile_sidebar')) {
 			}
 		}
 
-		if(get_my_url() && $profile['unkmail'])
+		if( get_my_url() && $profile['unkmail'] && ($profile['uid'] != local_user()) )
 			$wallmessage = t('Message');
 		else
 			$wallmessage = false;
@@ -1365,8 +1410,6 @@ if(! function_exists('profile_sidebar')) {
 		}
 
 
-		$tpl = get_markup_template('profile_vcard.tpl');
-
 		$p = array();
 		foreach($profile as $k => $v) {
 			$k = str_replace('-','_',$k);
@@ -1376,6 +1419,7 @@ if(! function_exists('profile_sidebar')) {
 		if($a->theme['template_engine'] === 'internal')
 			$location = template_escape($location);
 
+		$tpl = get_markup_template('profile_vcard.tpl');
 		$o .= replace_macros($tpl, array(
 			'$profile' => $p,
 			'$connect'  => $connect,
@@ -1891,6 +1935,36 @@ function build_querystring($params, $name=null) {
     return $ret;    
 }
 
+function explode_querystring($query) {
+	$arg_st = strpos($query, '?');
+	if($arg_st !== false) {
+		$base = substr($query, 0, $arg_st);
+		$arg_st += 1;
+	}
+	else {
+		$base = '';
+		$arg_st = 0;
+	}
+
+	$args = explode('&', substr($query, $arg_st));
+	foreach($args as $k=>$arg) {
+		if($arg === '')
+			unset($args[$k]);
+	}
+	$args = array_values($args);
+
+	if(!$base) {
+		$base = $args[0];
+		unset($args[0]);
+		$args = array_values($args);
+	}
+
+	return array(
+		'base' => $base,
+		'args' => $args,
+	);
+}
+
 /**
 * Returns the complete URL of the current page, e.g.: http(s)://something.com/network
 *
@@ -1968,20 +2042,9 @@ function clear_cache($basepath = "", $path = "") {
 }
 
 function set_template_engine(&$a, $engine = 'internal') {
+// This function is no longer necessary, but keep it as a wrapper to the class method
+// to avoid breaking themes again unnecessarily
 
-	$a->theme['template_engine'] = 'internal';
-
-	if(is_writable('view/smarty3/')) {
-		switch($engine) {
-			case 'smarty3':
-				$a->theme['template_engine'] = 'smarty3';
-				break;
-			default:
-				break;
-		}
-	}
+	$a->set_template_engine($engine);
 }
 
-function get_template_engine($a) {
-	return $a->theme['template_engine'];
-}

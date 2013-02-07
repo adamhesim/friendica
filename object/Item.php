@@ -66,6 +66,7 @@ class Item extends BaseObject {
 				if(! visible_activity($item)) {
 					continue;
 				}
+				$item['pagedrop'] = $data['pagedrop'];
 				$child = new Item($item);
 				$this->add_child($child);
 			}
@@ -497,13 +498,7 @@ class Item extends BaseObject {
 			return false;
 		}
 
-		if($a->theme['template_engine'] === 'smarty3') {
-			$template_file = get_template_file($a, 'smarty3/' . $this->available_templates[$name]);
-		}
-		else {
-			$template_file = $this->available_templates[$name];
-		}
-		$this->template = $template_file;
+		$this->template = $this->available_templates[$name];
 	}
 
 	/**
@@ -593,7 +588,7 @@ class Item extends BaseObject {
 				$qcomment = (($qc) ? explode("\n",$qc) : null);
 			}
 			$comment_box = replace_macros($template,array(
-				'$return_path' => '',
+				'$return_path' => $a->query_string,
 				'$threaded' => $this->is_threaded(),
 //				'$jsreload' => (($conv->get_mode() === 'display') ? $_SESSION['return_url'] : ''),
 				'$jsreload' => '',

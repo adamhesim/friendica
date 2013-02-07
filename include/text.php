@@ -23,7 +23,6 @@ function replace_macros($s,$r) {
 		if(gettype($s) === 'string') {
 			$template = $s;
 			$s = new FriendicaSmarty();
-			$s->error_reporting = E_ALL & ~E_NOTICE;
 		}
 		foreach($r as $key=>$value) {
 			if($key[0] === '$') {
@@ -174,10 +173,11 @@ function autoname($len) {
 
 if(! function_exists('xmlify')) {
 function xmlify($str) {
-	$buffer = '';
+/*	$buffer = '';
 	
-	for($x = 0; $x < mb_strlen($str); $x ++) {
-		$char = $str[$x];
+	$len = mb_strlen($str);
+	for($x = 0; $x < $len; $x ++) {
+		$char = mb_substr($str,$x,1);
         
 		switch( $char ) {
 
@@ -205,7 +205,14 @@ function xmlify($str) {
 				$buffer .= $char;
 				break;
 		}	
-	}
+	}*/
+
+	$buffer = mb_ereg_replace("&", "&amp;", $str);
+	$buffer = mb_ereg_replace("'", "&apos;", $buffer);
+	$buffer = mb_ereg_replace("\"", "&quot;", $buffer);
+	$buffer = mb_ereg_replace("<", "&lt;", $buffer);
+	$buffer = mb_ereg_replace(">", "&gt;", $buffer);
+
 	$buffer = trim($buffer);
 	return($buffer);
 }}
@@ -215,8 +222,13 @@ function xmlify($str) {
 
 if(! function_exists('unxmlify')) {
 function unxmlify($s) {
-	$ret = str_replace('&amp;','&', $s);
-	$ret = str_replace(array('&lt;','&gt;','&quot;','&apos;'),array('<','>','"',"'"),$ret);
+//	$ret = str_replace('&amp;','&', $s);
+//	$ret = str_replace(array('&lt;','&gt;','&quot;','&apos;'),array('<','>','"',"'"),$ret);
+	$ret = mb_ereg_replace('&amp;', '&', $s);
+	$ret = mb_ereg_replace('&apos;', "'", $ret);
+	$ret = mb_ereg_replace('&quot;', '"', $ret);
+	$ret = mb_ereg_replace('&lt;', "<", $ret);
+	$ret = mb_ereg_replace('&gt;', ">", $ret);
 	return $ret;	
 }}
 
@@ -490,12 +502,12 @@ function get_template_file($a, $filename, $root = '') {
 	if($root !== '' && $root[strlen($root)-1] !== '/')
 		$root = $root . '/';
 
-	if(file_exists($root . "view/theme/$theme/$filename"))
-		$template_file = $root . "view/theme/$theme/$filename";
-	elseif (x($a->theme_info,"extends") && file_exists($root . "view/theme/".$a->theme_info["extends"]."/$filename"))
-		$template_file = $root . "view/theme/".$a->theme_info["extends"]."/$filename";
+	if(file_exists("{$root}view/theme/$theme/$filename"))
+		$template_file = "{$root}view/theme/$theme/$filename";
+	elseif (x($a->theme_info,"extends") && file_exists("{$root}view/theme/{$a->theme_info["extends"]}/$filename"))
+		$template_file = "{$root}view/theme/{$a->theme_info["extends"]}/$filename";
 	else
-		$template_file = $root . "view/$filename";
+		$template_file = "{$root}view/$filename";
 
 	return $template_file;
 }}
@@ -1042,16 +1054,27 @@ function prepare_body($item,$attach = false) {
 		return $s;
 	}
 
-	$arr = explode(',',$item['attach']);
+	$arr = explode('[/attach],',$item['attach']);
 	if(count($arr)) {
 		$s .= '<div class="body-attach">';
 		foreach($arr as $r) {
 			$matches = false;
 			$icon = '';
-			$cnt = preg_match_all('|\[attach\]href=\"(.*?)\" length=\"(.*?)\" type=\"(.*?)\" title=\"(.*?)\"\[\/attach\]|',$r,$matches, PREG_SET_ORDER);
+			$cnt = preg_match_all('|\[attach\]href=\"(.*?)\" length=\"(.*?)\" type=\"(.*?)\" title=\"(.*?)\"|',$r,$matches, PREG_SET_ORDER);
 			if($cnt) {
 				foreach($matches as $mtch) {
-					$icontype = strtolower(substr($mtch[3],0,strpos($mtch[3],'/')));
+					$filetype = strtolower(substr( $mtch[3], 0, strpos($mtch[3],'/') ));
+					if($filetype) {
+						$filesubtype = strtolower(substr( $mtch[3], strpos($mtch[3],'/') + 1 ));
+						$filesubtype = str_replace('.', '-', $filesubtype);
+					}
+					else {
+						$filetype = 'unkn';
+						$filesubtype = 'unkn';
+					}
+
+					$icon = '<div class="attachtype icon s22 type-' . $filetype . ' subtype-' . $filesubtype . '"></div>';
+					/*$icontype = strtolower(substr($mtch[3],0,strpos($mtch[3],'/')));
 					switch($icontype) {
 						case 'video':
 						case 'audio':
@@ -1062,7 +1085,8 @@ function prepare_body($item,$attach = false) {
 						default:
 							$icon = '<div class="attachtype icon s22 type-unkn"></div>';
 							break;
-					}
+					}*/
+
 					$title = ((strlen(trim($mtch[4]))) ? escape_tags(trim($mtch[4])) : escape_tags($mtch[1]));
 					$title .= ' ' . $mtch[2] . ' ' . t('bytes');
 					if((local_user() == $item['uid']) && ($item['contact-id'] != $a->contact['id']) && ($item['network'] == NETWORK_DFRN))

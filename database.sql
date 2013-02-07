@@ -242,6 +242,20 @@ CREATE TABLE IF NOT EXISTS `deliverq` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `dsprphotoq`
+--
+
+CREATE TABLE `dsprphotoq` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `uid` int(11) NOT NULL,
+  `msg` mediumtext NOT NULL,
+  `attempt` tinyint(4) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `event`
 --
 
@@ -575,6 +589,7 @@ CREATE TABLE IF NOT EXISTS `item` (
   KEY `uid_commented` (`uid`, `commented`),
   KEY `uid_created` (`uid`, `created`),
   KEY `uid_unseen` (`uid`, `unseen`),
+  KEY `event_id` (`event-id`),
   FULLTEXT KEY `title` (`title`),
   FULLTEXT KEY `body` (`body`),
   FULLTEXT KEY `allow_cid` (`allow_cid`),

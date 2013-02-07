@@ -4,8 +4,6 @@
 function display_init(&$a) {
 
 	if((get_config('system','block_public')) && (! local_user()) && (! remote_user())) {
-		notice( t('Public access denied.') . EOL);
-		killme();
 		return;
 	}
 
@@ -16,6 +14,11 @@ function display_init(&$a) {
 
 
 function display_content(&$a, $update = 0) {
+
+	if((get_config('system','block_public')) && (! local_user()) && (! remote_user())) {
+		notice( t('Public access denied.') . EOL);
+		return;
+	}
 
 	require_once("include/bbcode.php");
 	require_once('include/security.php');
@@ -37,6 +40,7 @@ function display_content(&$a, $update = 0) {
 
 	if($update) {
 		$item_id = $_REQUEST['item_id'];
+		$a->profile = array('uid' => intval($update), 'profile_uid' => intval($update));
 	}
 	else {
 		$item_id = (($a->argc > 2) ? intval($a->argv[2]) : 0);
@@ -108,14 +112,16 @@ function display_content(&$a, $update = 0) {
 			'acl' => populate_acl($a->user, $celeb),
 			'bang' => '',
 			'visitor' => 'block',
-			'profile_uid' => local_user()
-		);	
+			'profile_uid' => local_user(),
+			'acl_data' => construct_acl_data($a, $a->user), // For non-Javascript ACL selector
+		);
 		$o .= status_editor($a,$x,0,true);
 	}
 
 	$sql_extra = item_permissions_sql($a->profile['uid'],$remote_contact,$groups);
 
 	if($update) {
+
 		$r = q("SELECT id FROM item WHERE item.uid = %d
 		        AND `item`.`parent` = ( SELECT `parent` FROM `item` WHERE ( `id` = '%s' OR `uri` = '%s' ))
 		        $sql_extra AND unseen = 1",
@@ -123,6 +129,7 @@ function display_content(&$a, $update = 0) {
 		        dbesc($item_id),
 		        dbesc($item_id) 
 		);
+
 		if(!$r)
 			return '';
 	}

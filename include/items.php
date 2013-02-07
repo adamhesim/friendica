@@ -3361,10 +3361,6 @@ function new_follower($importer,$contact,$datarray,$item,$sharing = false) {
 			}
 
 			if(($r[0]['notify-flags'] & NOTIFY_INTRO) && ($r[0]['page-flags'] == PAGE_NORMAL)) {
-
-				$engine = get_app()->get_template_engine();
-				get_app()->set_template_engine();
-
 				$email_tpl = get_intltext_template('follow_notify_eml.tpl');
 				$email = replace_macros($email_tpl, array(
 					'$requestor' => ((strlen($name)) ? $name : t('[Name Withheld]')),
@@ -3373,9 +3369,6 @@ function new_follower($importer,$contact,$datarray,$item,$sharing = false) {
 					'$siteurl' => $a->get_baseurl(),
 					'$sitename' => $a->config['sitename']
 				));
-
-				get_app()->set_template_engine($engine);
-
 				$res = mail($r[0]['email'], 
 					email_header_encode((($sharing) ? t('A new person is sharing with you at ') : t("You have a new follower at ")) . $a->config['sitename'],'UTF-8'),
 					$email,
@@ -3739,11 +3732,11 @@ function item_getfeedtags($item) {
 
 function item_getfeedattach($item) {
 	$ret = '';
-	$arr = explode(',',$item['attach']);
+	$arr = explode('[/attach],',$item['attach']);
 	if(count($arr)) {
 		foreach($arr as $r) {
 			$matches = false;
-			$cnt = preg_match('|\[attach\]href=\"(.*?)\" length=\"(.*?)\" type=\"(.*?)\" title=\"(.*?)\"\[\/attach\]|',$r,$matches);
+			$cnt = preg_match('|\[attach\]href=\"(.*?)\" length=\"(.*?)\" type=\"(.*?)\" title=\"(.*?)\"|',$r,$matches);
 			if($cnt) {
 				$ret .= '<link rel="enclosure" href="' . xmlify($matches[1]) . '" type="' . xmlify($matches[3]) . '" ';
 				if(intval($matches[2]))
@@ -3880,6 +3873,34 @@ function drop_item($id,$interactive = true) {
 
 
 	if((local_user() == $item['uid']) || ($cid) || (! $interactive)) {
+
+		// Check if we should do HTML-based delete confirmation
+		if($_REQUEST['confirm']) {
+			// <form> can't take arguments in its "action" parameter
+			// so add any arguments as hidden inputs
+			$query = explode_querystring($a->query_string);
+			$inputs = array();
+			foreach($query['args'] as $arg) {
+				if(strpos($arg, 'confirm=') === false) {
+					$arg_parts = explode('=', $arg);
+					$inputs[] = array('name' => $arg_parts[0], 'value' => $arg_parts[1]);
+				}
+			}
+
+			return replace_macros(get_markup_template('confirm.tpl'), array(
+				'$method' => 'get',
+				'$message' => t('Do you really want to delete this item?'),
+				'$extra_inputs' => $inputs,
+				'$confirm' => t('Yes'),
+				'$confirm_url' => $query['base'],
+				'$confirm_name' => 'confirmed',
+				'$cancel' => t('Cancel'),
+			));
+		}
+		// Now check how the user responded to the confirmation query
+		if($_REQUEST['canceled']) {
+			goaway($a->get_baseurl() . '/' . $_SESSION['return_url']);
+		}
 
 		logger('delete item: ' . $item['id'], LOGGER_DEBUG);
 		// delete the item
